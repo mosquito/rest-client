@@ -5,7 +5,7 @@ import sys
 PY2 = (sys.version_info < (3,))
 
 author_info = ("Dmitry Orlov", "me@mosquito.su")
-version_info = (0, 1, 4)
+version_info = (0, 1, 5)
 
 __version__ = ".".join(map(str, version_info))
 __author__ = "{0} <{1}>".format(*author_info)

@@ -60,8 +60,7 @@ class FrozenDict(dict):
 
 
 class RESTClient(object):
-    CLIENT_CLASS = AsyncHTTPClient
-    COOKIE_CLASS = Cookie.SimpleCookie
+    CLIENT = None
     THREAD_POOL = None
 
     _DEFAULT = {}
@@ -84,8 +83,12 @@ class RESTClient(object):
         assert isinstance(self.__thread_pool, futures.ThreadPoolExecutor)
 
         self.__headers = headers if headers else {}
-        self.__client = self.CLIENT_CLASS()
-        self.__cookies = self.COOKIE_CLASS()
+
+        if RESTClient.CLIENT is None:
+            RESTClient.CLIENT = AsyncHTTPClient()
+
+        self.__client = self.CLIENT
+        self.__cookies = Cookie.SimpleCookie()
         self.__default_args = copy(self._DEFAULT)
         self.__default_args.update(kwargs)
 
