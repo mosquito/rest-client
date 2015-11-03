@@ -35,8 +35,6 @@ class TestCookies(AsyncRESTTestCase):
 
     @gen_test
     def test_cookie(self):
-        response = yield self.http_client.get(self.api_url.format("/"))
-        print(response)
-        response = yield self.http_client.post(self.api_url.format("/"), body={})
-        print(response)
+        yield self.http_client.get(self.api_url.format("/"))
+        yield self.http_client.post(self.api_url.format("/"), body={})
 

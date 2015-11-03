@@ -62,6 +62,7 @@ class FrozenDict(dict):
 class RESTClient(object):
     CLIENT_CLASS = AsyncHTTPClient
     COOKIE_CLASS = Cookie.SimpleCookie
+    THREAD_POOL = None
 
     METHODS_WITH_BODY = {'POST', 'PUT'}
 
@@ -72,7 +73,7 @@ class RESTClient(object):
             self.io_loop = IOLoop.current()
 
         if thread_pool is None:
-            self.__thread_pool = futures.ThreadPoolExecutor(cpu_count())
+            self.__thread_pool = futures.ThreadPoolExecutor(cpu_count()) if not self.THREAD_POOL else self.THREAD_POOL
 
         assert isinstance(self.__thread_pool, futures.ThreadPoolExecutor)
 
