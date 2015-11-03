@@ -2,7 +2,7 @@
 # encoding: utf-8
 import sys
 
-PY2 = (sys.version_info > (3,))
+PY2 = (sys.version_info < (3,))
 
 author_info = ("Dmitry Orlov", "me@mosquito.su")
 version_info = (0, 1, 1)
