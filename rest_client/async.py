@@ -115,7 +115,7 @@ class RESTClient(object):
         params.update(kwargs)
 
         request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
-        request.headers['Cookie'] = ";".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
+        request.headers['Cookie'] = "; ".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
 
         try:
             response = yield self._client.fetch(request)
