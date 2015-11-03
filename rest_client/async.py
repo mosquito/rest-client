@@ -3,7 +3,7 @@
 from copy import copy
 import sys
 import ujson
-from Cookie import SimpleCookie
+from tornado.web import Cookie
 from tornado.gen import coroutine, Return
 from tornado.concurrent import futures
 from multiprocessing import cpu_count
@@ -59,7 +59,7 @@ class FrozenDict(dict):
 
 class RESTClient(object):
     CLIENT_CLASS = AsyncHTTPClient
-    COOKIE_CLASS = SimpleCookie
+    COOKIE_CLASS = Cookie.SimpleCookie
 
     METHODS_WITH_BODY = {'POST', 'PUT'}
 
