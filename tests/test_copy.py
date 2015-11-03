@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # encoding: utf-8
+from copy import copy
 from tornado.testing import gen_test
 from tornado.web import Application
 from . import RESTTestHandler
 from .server import AsyncRESTTestCase
 
 
-class CookieHandler(RESTTestHandler):
+class Handler(RESTTestHandler):
     COOKIES = [
         (('foo', 'baz'), dict(expires_days=20)),
         (('bar', '*'), dict(expires_days=20)),
@@ -17,7 +18,7 @@ class CookieHandler(RESTTestHandler):
         for args, kwargs in self.COOKIES:
             self.set_cookie(*args, **kwargs)
 
-        self.response([])
+        self.response({})
 
     def post(self, *args, **kwargs):
         assert self.get_cookie('foo') == 'baz'
@@ -27,23 +28,21 @@ class CookieHandler(RESTTestHandler):
         self.response({})
 
 
-class TestCookies(AsyncRESTTestCase):
+class TestCopy(AsyncRESTTestCase):
     def get_app(self):
         return Application(handlers=[
-            ('/', CookieHandler),
+            ('/', Handler),
         ])
 
     @gen_test
-    def test_cookie(self):
-        yield self.http_client.get(self.api_url.format("/"))
-        yield self.http_client.post(self.api_url.format("/"), body={})
+    def test_copy(self):
+        client = self.get_http_client()
 
-    @gen_test
-    def test_freeze(self):
-        yield self.http_client.get(self.api_url.format("/"), freeze=True)
-        assert not len(self.http_client._cookies)
+        yield client.get(self.api_url.format("/"))
 
-    @gen_test
-    def test_fail(self):
-        response = yield self.http_client.put(self.api_url.format("/"), fail=False)
-        assert response.fail
+        clone = copy(client)
+        assert client is not clone
+
+        yield clone.post(self.api_url.format("/"), body={})
+
+

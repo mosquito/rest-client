@@ -58,46 +58,49 @@ class FrozenDict(dict):
     def __hash__(self):
         return self.__hash
 
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __ne__(self, other):
+        return hash(self) != hash(other)
+
 
 class RESTClient(object):
-    CLIENT = None
     THREAD_POOL = None
 
     _DEFAULT = {}
 
     METHODS_WITH_BODY = {'POST', 'PUT'}
 
-    __slots__ = ('__client', '__cookies', 'io_loop', '__thread_pool', '__headers', '__default_args')
+    __slots__ = ('_client', '_cookies', 'io_loop', '_thread_pool', '_headers', '_default_args')
 
     @classmethod
     def configure(cls, **kwargs):
         cls._DEFAULT.update(kwargs)
 
-    def __init__(self, io_loop=None, thread_pool=None, headers=None, **kwargs):
-        if io_loop is None:
-            self.io_loop = IOLoop.current()
+    def __init__(self, io_loop=None, client=None, thread_pool=None, headers=None, **kwargs):
+        self.io_loop = IOLoop.current() if io_loop is None else io_loop
 
         if thread_pool is None:
-            self.__thread_pool = futures.ThreadPoolExecutor(cpu_count()) if not self.THREAD_POOL else self.THREAD_POOL
+            self._thread_pool = futures.ThreadPoolExecutor(cpu_count()) if not self.THREAD_POOL else self.THREAD_POOL
+        else:
+            self._thread_pool = thread_pool
 
-        assert isinstance(self.__thread_pool, futures.ThreadPoolExecutor)
+        assert isinstance(self._thread_pool, futures.ThreadPoolExecutor)
 
-        self.__headers = headers if headers else {}
+        self._headers = headers if headers else {}
 
-        if RESTClient.CLIENT is None:
-            RESTClient.CLIENT = AsyncHTTPClient()
-
-        self.__client = self.CLIENT
-        self.__cookies = Cookie.SimpleCookie()
-        self.__default_args = copy(self._DEFAULT)
-        self.__default_args.update(kwargs)
+        self._client = AsyncHTTPClient() if client is None else client
+        self._cookies = Cookie.SimpleCookie()
+        self._default_args = copy(self._DEFAULT)
+        self._default_args.update(kwargs)
 
     @coroutine
     def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False, **kwargs):
         if not headers:
             headers = {}
 
-        default_headers = copy(self.__headers)
+        default_headers = copy(self._headers)
         default_headers.update(headers)
 
         headers = default_headers
@@ -106,33 +109,37 @@ class RESTClient(object):
             headers['Content-Type'] = 'application/json'
 
         if method in self.METHODS_WITH_BODY and headers['Content-Type'] == 'application/json':
-            body = yield self.__thread_pool.submit(ujson.dumps, body)
+            body = yield self._thread_pool.submit(ujson.dumps, body)
 
-        params = copy(self.__default_args)
+        params = copy(self._default_args)
         params.update(kwargs)
 
         request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
-        request.headers['Cookie'] = ";".join("{0.key}={0.value}".format(cookie) for cookie in self.__cookies.values())
+        request.headers['Cookie'] = ";".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
 
         try:
-            response = yield self.__client.fetch(request)
-        except HTTPError:
+            response = yield self._client.fetch(request)
+            response.fail = False
+        except HTTPError as e:
             if fail:
                 raise
 
+            response = e.response
+            response.fail = True
+
         if response.body and 'json' in response.headers.get("Content-Type", ""):
-            new_body = yield self.__thread_pool.submit(ujson.loads, response._body)
+            new_body = yield self._thread_pool.submit(ujson.loads, response._body)
             response._body = _freeze_response(new_body)
 
         if not freeze:
             for cookie in response.headers.get_list('Set-Cookie'):
-                self.__cookies.load(cookie)
+                self._cookies.load(cookie)
 
         raise Return(response)
 
     @property
     def close(self):
-        return self.__client.close
+        return self._client.close
 
     get = make_method('GET')
     post = make_method('POST')
@@ -141,4 +148,13 @@ class RESTClient(object):
     delete = make_method('DELETE')
     head = make_method('HEAD')
 
+    def __copy__(self):
+        client = RESTClient(
+            thread_pool=self._thread_pool,
+            io_loop=self.io_loop,
+            headers=self._headers,
+            **self._default_args
+        )
 
+        client._cookies = copy(self._cookies)
+        return client
