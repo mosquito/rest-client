@@ -64,11 +64,17 @@ class RESTClient(object):
     COOKIE_CLASS = Cookie.SimpleCookie
     THREAD_POOL = None
 
+    _DEFAULT = {}
+
     METHODS_WITH_BODY = {'POST', 'PUT'}
 
-    __slots__ = ('__client', '__cookies', 'io_loop', '__thread_pool', '__headers')
+    __slots__ = ('__client', '__cookies', 'io_loop', '__thread_pool', '__headers', '__default_args')
 
-    def __init__(self, io_loop=None, thread_pool=None, headers=None):
+    @classmethod
+    def configure(cls, **kwargs):
+        cls._DEFAULT.update(kwargs)
+
+    def __init__(self, io_loop=None, thread_pool=None, headers=None, **kwargs):
         if io_loop is None:
             self.io_loop = IOLoop.current()
 
@@ -80,16 +86,18 @@ class RESTClient(object):
         self.__headers = headers if headers else {}
         self.__client = self.CLIENT_CLASS()
         self.__cookies = self.COOKIE_CLASS()
+        self.__default_args = copy(self._DEFAULT)
+        self.__default_args.update(kwargs)
 
     @coroutine
     def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False, **kwargs):
         if not headers:
             headers = {}
 
-        defailt_headers = copy(self.__headers)
-        defailt_headers.update(headers)
+        default_headers = copy(self.__headers)
+        default_headers.update(headers)
 
-        headers = defailt_headers
+        headers = default_headers
 
         if "Content-Type" not in headers:
             headers['Content-Type'] = 'application/json'
@@ -97,7 +105,10 @@ class RESTClient(object):
         if method in self.METHODS_WITH_BODY and headers['Content-Type'] == 'application/json':
             body = yield self.__thread_pool.submit(ujson.dumps, body)
 
-        request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **kwargs)
+        params = copy(self.__default_args)
+        params.update(kwargs)
+
+        request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
         request.headers['Cookie'] = ";".join("{0.key}={0.value}".format(cookie) for cookie in self.__cookies.values())
 
         try:
