@@ -1,28 +1,30 @@
 #!/usr/bin/env python
 # encoding: utf-8
-from copy import copy
-import sys
 import ujson
+from copy import copy
+from multiprocessing import cpu_count
 from tornado.web import Cookie
 from tornado.gen import coroutine, Return
 from tornado.concurrent import futures
-from multiprocessing import cpu_count
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
+from . import PY2
 
 
-if sys.version_info < (3,):
+if PY2:
     b = unicode
+    iteritems = lambda x: x.iteritems()
 else:
     b = str
+    iteritems = lambda x: x.items()
 
 
 def _freeze_response(response):
     if isinstance(response, list):
         return tuple(_freeze_response(x) for x in response)
     elif isinstance(response, dict):
-        data = {k: _freeze_response(v) for k, v in response.items()}
+        data = {k: _freeze_response(v) for k, v in iteritems(response)}
         return FrozenDict(data)
     else:
         return response
@@ -43,7 +45,7 @@ class FrozenDict(dict):
 
     def __init__(self, data):
         super(FrozenDict, self).__init__(data)
-        self.__hash = hash(tuple(i for i in self.items()))
+        self.__hash = hash(tuple(i for i in sorted(iteritems(self))))
 
     def __setitem__(self, key, value):
         raise TypeError("Response is immutable")
