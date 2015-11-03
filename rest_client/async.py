@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
+from copy import copy
 import sys
 import ujson
 from Cookie import SimpleCookie
@@ -17,6 +18,16 @@ else:
     b = str
 
 
+def _freeze_response(response):
+    if isinstance(response, list):
+        return tuple(_freeze_response(x) for x in response)
+    elif isinstance(response, dict):
+        data = {k: _freeze_response(v) for k, v in response.items()}
+        return FrozenDict(data)
+    else:
+        return response
+
+
 def make_method(method_name):
     def method(self, url, **kwargs):
         return self.fetch(url, method=method_name, **kwargs)
@@ -26,23 +37,24 @@ def make_method(method_name):
     return method
 
 
-class RESTResponse(dict):
+class FrozenDict(dict):
+    __slots__ = ('__hash',)
+    __getattr__ = dict.__getitem__
+
+    def __init__(self, data):
+        super(FrozenDict, self).__init__(data)
+        self.__hash = hash(tuple(i for i in self.items()))
+
     def __setitem__(self, key, value):
         raise TypeError("Response is immutable")
 
-    def __getitem__(self, key):
-        item = super(RESTResponse, self).__getitem__(key)
+    def __setattr__(self, key, value):
+        if key.startswith("_{0.__class__.__name__}".format(self)):
+            return super(FrozenDict, self).__setattr__(key, value)
+        raise TypeError("Response is immutable")
 
-        processors = {
-            list: tuple,
-            dict: RESTResponse
-        }
-
-        processor = processors.get(type(item))
-        return processor(item) if processor else item
-
-    __getattr__ = __getitem__
-    __setattr__ = __setitem__
+    def __hash__(self):
+        return self.__hash
 
 
 class RESTClient(object):
@@ -51,9 +63,9 @@ class RESTClient(object):
 
     METHODS_WITH_BODY = {'POST', 'PUT'}
 
-    __slots__ = ('__client', '__cookies', 'io_loop', '__thread_pool')
+    __slots__ = ('__client', '__cookies', 'io_loop', '__thread_pool', '__headers')
 
-    def __init__(self, io_loop=None, thread_pool=None):
+    def __init__(self, io_loop=None, thread_pool=None, headers=None):
         if io_loop is None:
             self.io_loop = IOLoop.current()
 
@@ -62,6 +74,7 @@ class RESTClient(object):
 
         assert isinstance(self.__thread_pool, futures.ThreadPoolExecutor)
 
+        self.__headers = headers if headers else {}
         self.__client = self.CLIENT_CLASS()
         self.__cookies = self.COOKIE_CLASS()
 
@@ -69,6 +82,11 @@ class RESTClient(object):
     def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False, **kwargs):
         if not headers:
             headers = {}
+
+        defailt_headers = copy(self.__headers)
+        defailt_headers.update(headers)
+
+        headers = defailt_headers
 
         if "Content-Type" not in headers:
             headers['Content-Type'] = 'application/json'
@@ -86,7 +104,8 @@ class RESTClient(object):
                 raise
 
         if response.body and 'json' in response.headers.get("Content-Type", ""):
-            response._body = RESTResponse((yield self.__thread_pool.submit(ujson.loads, response.body)))
+            new_body = yield self.__thread_pool.submit(ujson.loads, response._body)
+            response._body = _freeze_response(new_body)
 
         if not freeze:
             for cookie in response.headers.get_list('Set-Cookie'):

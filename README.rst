@@ -18,8 +18,16 @@ rest-client
     :target: https://pypi.python.org/pypi/rest-client/
 
 
-RESTful Client for tornado.
+RESTful Client for tornado with support cookies.
 
 Example::
 
-    from rest-client import RESTClient
+    from rest_client.async import RESTClient
+
+    @coroutine
+    def repo_list():
+        client = RESTClient()
+        response = yield client.get('https://api.github.com/users/octocat/orgs')
+
+
+
