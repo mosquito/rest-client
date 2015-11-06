@@ -6,7 +6,7 @@ from .server import AsyncRESTTestCase
 
 
 class Handler(RequestHandler):
-    S = u"testразраз"
+    S = u"test\u0440\u0430\u0437\u0440\u0430\u0437"
 
     def get(self):
         self.set_header('Content-Type', 'text/plain; charset=cp1251')
