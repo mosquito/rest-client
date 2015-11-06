@@ -18,16 +18,17 @@ setup(
     platforms="all",
     classifiers=[
         'Environment :: Console',
-        'Programming Language :: Pypy',
-        'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.1',
         'Programming Language :: Python :: 3.2',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: Implementation :: PyPy',
     ],
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=['tests']),
     install_requires=requires,
 )
+
+
