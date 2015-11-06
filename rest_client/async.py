@@ -130,6 +130,11 @@ class RESTClient(object):
         if response.body and 'json' in response.headers.get("Content-Type", ""):
             new_body = yield self._thread_pool.submit(ujson.loads, response._body)
             response._body = _freeze_response(new_body)
+        else:
+            content_type = response.headers.get("Content-Type", '')
+            if 'charset=' in content_type:
+                _, charset = content_type.split("charset=")
+                response._body = response._body.decode(charset.lower())
 
         if not freeze:
             for cookie in response.headers.get_list('Set-Cookie'):
