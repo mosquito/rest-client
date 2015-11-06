@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # encoding: utf-8
-import ujson
 from copy import copy
 from multiprocessing import cpu_count
 from tornado.web import Cookie
-from tornado.gen import coroutine, Return
+from tornado.gen import coroutine, Return, maybe_future
 from tornado.concurrent import futures
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
@@ -20,11 +19,17 @@ else:
     iteritems = lambda x: x.items()
 
 
+try:
+    import ujson as json
+except ImportError:
+    import json
+
+
 def _freeze_response(response):
     if isinstance(response, list):
         return tuple(_freeze_response(x) for x in response)
     elif isinstance(response, dict):
-        data = {k: _freeze_response(v) for k, v in iteritems(response)}
+        data = dict((k, _freeze_response(v)) for k, v in iteritems(response))
         return FrozenDict(data)
     else:
         return response
@@ -70,7 +75,7 @@ class RESTClient(object):
 
     _DEFAULT = {}
 
-    METHODS_WITH_BODY = {'POST', 'PUT'}
+    METHODS_WITH_BODY = set(['POST', 'PUT'])
 
     __slots__ = ('_client', '_cookies', 'io_loop', '_thread_pool', '_headers', '_default_args')
 
@@ -109,7 +114,7 @@ class RESTClient(object):
             headers['Content-Type'] = 'application/json'
 
         if method in self.METHODS_WITH_BODY and headers['Content-Type'] == 'application/json':
-            body = yield self._thread_pool.submit(ujson.dumps, body)
+            body = yield maybe_future(self._make_json(body))
 
         params = copy(self._default_args)
         params.update(kwargs)
@@ -127,20 +132,37 @@ class RESTClient(object):
             response = e.response
             response.fail = True
 
-        if response.body and 'json' in response.headers.get("Content-Type", ""):
-            new_body = yield self._thread_pool.submit(ujson.loads, response._body)
-            response._body = _freeze_response(new_body)
+        content_type = response.headers.get("Content-Type", '')
+        if 'charset=' in content_type:
+            _, charset = content_type.split("charset=")
+            response._body = response.body.decode(charset.lower())
         else:
-            content_type = response.headers.get("Content-Type", '')
-            if 'charset=' in content_type:
-                _, charset = content_type.split("charset=")
-                response._body = response._body.decode(charset.lower())
+            response._body = response.body.decode('utf-8')
+
+        if response.body and 'json' in response.headers.get("Content-Type", ""):
+            new_body = yield maybe_future(self._parse_json(response.body))
+            response._body = _freeze_response(new_body)
 
         if not freeze:
             for cookie in response.headers.get_list('Set-Cookie'):
                 self._cookies.load(cookie)
 
         raise Return(response)
+
+    if json.__name__ == 'ujson':
+        @coroutine
+        def _parse_json(self, data):
+            raise Return((yield self._thread_pool.submit(json.loads, data)))
+
+        @coroutine
+        def _make_json(self, data):
+            raise Return((yield self._thread_pool.submit(json.dumps, data)))
+    else:
+        def _parse_json(self, data):
+            return json.loads(data)
+
+        def _make_json(self, data):
+            return json.dumps(data)
 
     @property
     def close(self):

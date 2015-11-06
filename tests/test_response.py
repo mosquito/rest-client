@@ -8,7 +8,7 @@ from .server import AsyncRESTTestCase
 
 
 class Handler(RESTTestHandler):
-    DATA = [{i: j for i, j in enumerate(randint(0, 1000) for _ in range(100))}, '', 1]
+    DATA = [dict([(i, j) for i, j in enumerate(randint(0, 1000) for _ in range(100))]), '', 1]
 
     def get(self, *args, **kwargs):
         self.response(self.DATA)

@@ -3,6 +3,10 @@
 from setuptools import setup, find_packages
 import rest_client
 
+requires = [
+    'futures',
+    'tornado',
+]
 
 setup(
     name='rest_client',
@@ -14,6 +18,7 @@ setup(
     platforms="all",
     classifiers=[
         'Environment :: Console',
+        'Programming Language :: Pypy',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
@@ -24,9 +29,5 @@ setup(
     ],
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=['tests']),
-    install_requires=[
-        'futures',
-        'ujson',
-        'tornado',
-    ],
+    install_requires=requires,
 )
