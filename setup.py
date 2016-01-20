@@ -9,7 +9,7 @@ requires = [
 ]
 
 setup(
-    name='rest_client',
+    name='rest-client',
     version=rest_client.__version__,
     author=rest_client.__author__,
     author_email=rest_client.author_info[1],
