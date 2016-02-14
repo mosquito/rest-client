@@ -75,7 +75,7 @@ class RESTClient(object):
 
     _DEFAULT = {}
 
-    METHODS_WITH_BODY = set(['POST', 'PUT'])
+    METHODS_WITH_BODY = set(['POST', 'PUT', 'PATCH'])
 
     __slots__ = ('_client', '_cookies', 'io_loop', '_thread_pool', '_headers', '_default_args')
 
