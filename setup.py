@@ -2,11 +2,17 @@
 # encoding: utf-8
 from setuptools import setup, find_packages
 import rest_client
+import sys
+
 
 requires = [
-    'futures',
     'tornado',
 ]
+
+
+if sys.version_info >= (3,):
+    requires.append('futures')
+
 
 setup(
     name='rest-client',
