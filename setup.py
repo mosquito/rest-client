@@ -10,7 +10,7 @@ requires = [
 ]
 
 
-if sys.version_info >= (3,):
+if sys.version_info < (3,):
     requires.append('futures')
 
 
