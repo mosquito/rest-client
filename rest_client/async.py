@@ -119,6 +119,8 @@ class RESTClient(object):
         params = copy(self._default_args)
         params.update(kwargs)
 
+        last_exc = RuntimeError("Something wrong")
+
         for _ in range(max_redirects + 1):
             request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
             request.headers['Cookie'] = "; ".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
