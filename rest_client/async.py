@@ -101,7 +101,7 @@ class RESTClient(object):
         self._default_args.update(kwargs)
 
     @coroutine
-    def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False, **kwargs):
+    def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False, follow_redirects=True, max_redirects=5, **kwargs):
         if not headers:
             headers = {}
 
@@ -119,18 +119,32 @@ class RESTClient(object):
         params = copy(self._default_args)
         params.update(kwargs)
 
-        request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
-        request.headers['Cookie'] = "; ".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
+        for _ in range(max_redirects + 1):
+            request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
+            request.headers['Cookie'] = "; ".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
 
-        try:
-            response = yield self._client.fetch(request)
-            response.fail = False
-        except HTTPError as e:
-            if fail:
-                raise
+            need_redirect = False
+            try:
+                response = yield self._client.fetch(request, follow_redirects=False)
+                response.fail = False
+            except HTTPError as e:
+                last_exc = e
+                response = e.response
+                if e.code in (301, 302, 303, 307) and follow_redirects:
+                    need_redirect = True
+                else:
+                    response.fail = True
 
-            response = e.response
+            if not need_redirect:
+                break
+
+            for cookie in response.headers.get_list('Set-Cookie'):
+                self._cookies.load(cookie)
+        else:
             response.fail = True
+
+        if fail and response.fail:
+            raise last_exc
 
         content_type = response.headers.get("Content-Type", '')
         if 'charset=' in content_type:
