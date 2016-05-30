@@ -119,8 +119,7 @@ class RESTClient(object):
         params = copy(self._default_args)
         params.update(kwargs)
 
-        redirects = 0
-        while True:
+        for _ in range(max_redirects + 1):
             request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
             request.headers['Cookie'] = "; ".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
 
@@ -129,21 +128,23 @@ class RESTClient(object):
                 response = yield self._client.fetch(request, follow_redirects=False)
                 response.fail = False
             except HTTPError as e:
+                last_exc = e
                 response = e.response
                 if e.code in (301, 302, 303, 307) and follow_redirects:
                     need_redirect = True
                 else:
-                    if fail:
-                        raise
                     response.fail = True
 
-            if not need_redirect or redirects >= max_redirects:
+            if not need_redirect:
                 break
 
-            redirects += 1
             for cookie in response.headers.get_list('Set-Cookie'):
                 self._cookies.load(cookie)
+        else:
+            response.fail = True
 
+        if fail and response.fail:
+            raise last_exc
 
         content_type = response.headers.get("Content-Type", '')
         if 'charset=' in content_type:
