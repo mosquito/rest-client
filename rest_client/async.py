@@ -4,6 +4,7 @@ from copy import copy
 from multiprocessing import cpu_count
 from tornado.web import Cookie
 from tornado.gen import coroutine, Return, maybe_future
+from tornado.log import app_log as log
 from tornado.concurrent import futures
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
@@ -123,7 +124,9 @@ class RESTClient(object):
 
         for _ in range(max_redirects + 1):
             request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
-            request.headers['Cookie'] = "; ".join("{0.key}={0.value}".format(cookie) for cookie in self._cookies.values())
+            request.headers['Cookie'] = "; ".join(
+                "{0.key}={0.value}".format(cookie) for cookie in self._cookies.values()
+            )
 
             need_redirect = False
             try:
