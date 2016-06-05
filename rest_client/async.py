@@ -4,7 +4,6 @@ from copy import copy
 from multiprocessing import cpu_count
 from tornado.web import Cookie
 from tornado.gen import coroutine, Return, maybe_future
-from tornado.log import app_log as log
 from tornado.concurrent import futures
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
@@ -72,27 +71,18 @@ class FrozenDict(dict):
 
 
 class RESTClient(object):
-    THREAD_POOL = None
-
     _DEFAULT = {}
 
     METHODS_WITH_BODY = set(['POST', 'PUT', 'PATCH'])
 
-    __slots__ = ('_client', '_cookies', 'io_loop', '_thread_pool', '_headers', '_default_args')
+    __slots__ = ('_client', '_cookies', 'io_loop', '_headers', '_default_args')
 
     @classmethod
     def configure(cls, **kwargs):
         cls._DEFAULT.update(kwargs)
 
-    def __init__(self, io_loop=None, client=None, thread_pool=None, headers=None, **kwargs):
+    def __init__(self, io_loop=None, client=None, headers=None, **kwargs):
         self.io_loop = IOLoop.current() if io_loop is None else io_loop
-
-        if thread_pool is None:
-            self._thread_pool = futures.ThreadPoolExecutor(cpu_count()) if not self.THREAD_POOL else self.THREAD_POOL
-        else:
-            self._thread_pool = thread_pool
-
-        assert isinstance(self._thread_pool, futures.ThreadPoolExecutor)
 
         self._headers = headers if headers else {}
 
@@ -135,10 +125,14 @@ class RESTClient(object):
             except HTTPError as e:
                 last_exc = e
                 response = e.response
+
                 if e.code in (301, 302, 303, 307) and follow_redirects:
                     need_redirect = True
                 else:
                     response.fail = True
+
+                if 'application/json' in e.response.headers.get("Content-Type", '').lower() and e.response.body:
+                    e.response._body = self._parse_json(response._body.decode('utf-8'))
 
             if not need_redirect:
                 break
@@ -168,20 +162,11 @@ class RESTClient(object):
 
         raise Return(response)
 
-    if json.__name__ == 'ujson':
-        @coroutine
-        def _parse_json(self, data):
-            raise Return((yield self._thread_pool.submit(json.loads, data)))
+    def _parse_json(self, data):
+        return json.loads(data)
 
-        @coroutine
-        def _make_json(self, data):
-            raise Return((yield self._thread_pool.submit(json.dumps, data)))
-    else:
-        def _parse_json(self, data):
-            return json.loads(data)
-
-        def _make_json(self, data):
-            return json.dumps(data)
+    def _make_json(self, data):
+        return json.dumps(data)
 
     @property
     def close(self):
@@ -196,7 +181,6 @@ class RESTClient(object):
 
     def __copy__(self):
         client = RESTClient(
-            thread_pool=self._thread_pool,
             io_loop=self.io_loop,
             headers=self._headers,
             **self._default_args

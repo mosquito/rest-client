@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from random import randint
+
+from tornado.httpclient import HTTPError
 from tornado.testing import gen_test
 from tornado.web import Application
 from . import RESTTestHandler
@@ -15,6 +17,10 @@ class Handler(RESTTestHandler):
 
     def delete(self, *args, **kwargs):
         self.response({'foo': []})
+
+    def put(self, *args, **kwargs):
+        self.set_status(500)
+        self.response({'fail': True})
 
 
 class TestCookies(AsyncRESTTestCase):
@@ -53,3 +59,10 @@ class TestCookies(AsyncRESTTestCase):
         ]
 
         self.assertEqual(first.body, second.body)
+
+    @gen_test
+    def test_parse_error_json(self):
+        with self.assertRaises(HTTPError) as e:
+            yield self.http_client.put(self.api_url.format("/"), body="")
+
+        self.assertDictEqual(e.exception.response.body, {'fail': True})
