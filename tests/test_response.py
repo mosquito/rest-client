@@ -4,7 +4,7 @@ from random import randint
 
 from tornado.httpclient import HTTPError
 from tornado.testing import gen_test
-from tornado.web import Application
+from tornado.web import Application, asynchronous
 from . import RESTTestHandler
 from .server import AsyncRESTTestCase
 
@@ -23,10 +23,17 @@ class Handler(RESTTestHandler):
         self.response({'fail': True})
 
 
+class InfinitieHandler(RESTTestHandler):
+    @asynchronous
+    def get(self, *args, **kwargs):
+        return
+
+
 class TestCookies(AsyncRESTTestCase):
     def get_app(self):
         return Application(handlers=[
             ('/', Handler),
+            ('/wait', InfinitieHandler),
         ])
 
     @gen_test
@@ -66,3 +73,10 @@ class TestCookies(AsyncRESTTestCase):
             yield self.http_client.put(self.api_url.format("/"), body="")
 
         self.assertDictEqual(e.exception.response.body, {'fail': True})
+
+    @gen_test(timeout=10)
+    def test_timed_out(self):
+        with self.assertRaises(HTTPError) as e:
+            yield self.http_client.get(self.api_url.format("/wait"), request_timeout=1)
+
+        self.assertEqual(e.exception.response, None)

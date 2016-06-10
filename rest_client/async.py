@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from copy import copy
-from multiprocessing import cpu_count
 from tornado.web import Cookie
 from tornado.gen import coroutine, Return, maybe_future
-from tornado.concurrent import futures
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
@@ -126,19 +124,27 @@ class RESTClient(object):
                 last_exc = e
                 response = e.response
 
+                if e.code == 599:
+                    response = e
+
                 if e.code in (301, 302, 303, 307) and follow_redirects:
                     need_redirect = True
                 else:
                     response.fail = True
 
-                if 'application/json' in e.response.headers.get("Content-Type", '').lower() and e.response.body:
-                    e.response._body = self._parse_json(response._body.decode('utf-8'))
+                if e.response:
+                    content_type = e.response.headers.get('Content-Type', '')
+                    e.response._body = self._decode_body(content_type, response.body)
+
+                    if e.response.body and 'application/json' in content_type.lower():
+                        e.response._body = self._parse_json(e.response.body)
 
             if not need_redirect:
                 break
 
-            for cookie in response.headers.get_list('Set-Cookie'):
-                self._cookies.load(cookie)
+            if not freeze:
+                for cookie in response.headers.get_list('Set-Cookie'):
+                    self._cookies.load(cookie)
         else:
             response.fail = True
 
@@ -146,14 +152,10 @@ class RESTClient(object):
             raise last_exc
 
         content_type = response.headers.get("Content-Type", '')
-        if 'charset=' in content_type:
-            _, charset = content_type.split("charset=")
-            response._body = response.body.decode(charset.lower())
-        else:
-            response._body = response.body.decode('utf-8')
+        response._body = self._decode_body(content_type, response.body)
 
         if response.body and 'json' in response.headers.get("Content-Type", ""):
-            new_body = yield maybe_future(self._parse_json(response.body))
+            new_body = self._parse_json(response.body)
             response._body = _freeze_response(new_body)
 
         if not freeze:
@@ -161,6 +163,19 @@ class RESTClient(object):
                 self._cookies.load(cookie)
 
         raise Return(response)
+
+    @classmethod
+    def _decode_body(cls, content_type, body):
+        if 'charset=' in content_type:
+            _, charset = content_type.split("charset=")
+            charset = charset.lower()
+        else:
+            charset = 'utf-8'
+
+        try:
+            return body.decode(charset)
+        except:
+            return body
 
     def _parse_json(self, data):
         return json.loads(data)
