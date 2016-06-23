@@ -132,7 +132,7 @@ class RESTClient(object):
                 else:
                     response.fail = True
 
-                if e.response:
+                if fail and e.response:
                     content_type = e.response.headers.get('Content-Type', '')
                     e.response._body = self._decode_body(content_type, response.body)
 
