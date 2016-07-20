@@ -11,7 +11,7 @@ except ImportError:
     IS_PYPY = False
 
 author_info = ("Dmitry Orlov", "me@mosquito.su")
-version_info = (0, 3, 0)
+version_info = (0, 3, 1)
 
 __version__ = ".".join(map(str, version_info))
 __author__ = "{0} <{1}>".format(*author_info)
