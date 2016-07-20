@@ -111,14 +111,23 @@ class RESTClient(object):
         last_exc = RuntimeError("Something wrong")
 
         for _ in range(max_redirects + 1):
-            request = HTTPRequest(b(url), method=method, body=body, headers=HTTPHeaders(headers), **params)
+            request = HTTPRequest(
+                b(url),
+                method=method,
+                body=body,
+                headers=HTTPHeaders(headers),
+                follow_redirects=False,
+                **params
+            )
+
             request.headers['Cookie'] = "; ".join(
                 "{0.key}={0.value}".format(cookie) for cookie in self._cookies.values()
             )
 
             need_redirect = False
+
             try:
-                response = yield self._client.fetch(request, follow_redirects=False)
+                response = yield self._client.fetch(request)
                 response.fail = False
             except HTTPError as e:
                 last_exc = e
