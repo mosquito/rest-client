@@ -18,6 +18,7 @@ setup(
     name='rest-client',
     version=rest_client.__version__,
     author=rest_client.__author__,
+    url="https://github.com/mosquito/rest-client",
     author_email=rest_client.author_info[1],
     license="MIT",
     description="RESTful Client for tornado",
