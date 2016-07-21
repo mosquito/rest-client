@@ -29,7 +29,6 @@ env:
   - TOXENV=ujson-py27
   - TOXENV=ujson-py34
   - TOXENV=ujson-py35
-  - TOXENV=ujson-pypy3
   - TOXENV=ujson-pypy4
 
 install:
