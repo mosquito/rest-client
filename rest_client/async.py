@@ -6,7 +6,14 @@ from tornado.gen import coroutine, Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
+from tornado.netutil import Resolver
 from . import PY2
+
+try:
+    import pycares
+    Resolver.configure('tornado.platform.caresresolver.CaresResolver')
+except ImportError:
+    pass
 
 
 if PY2:
