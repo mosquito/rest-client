@@ -6,25 +6,30 @@ addons:
     packages:
       - python3.5
 env:
-  - TOXENV=json-py35
+  - TOXENV=json-py27
   - TOXENV=json-py34
-  - TOXENV=ujson-py35
-  - TOXENV=ujson-py34
-  - TOXENV=pycares-py35
-  - TOXENV=tornado43-py35
-  - TOXENV=tornado43-py34
-  - TOXENV=tornado44-py35
-  - TOXENV=tornado44-py34
-  - TOXENV=pycares-pypy3
-  - TOXENV=pycares-pypy4
+  - TOXENV=json-py35
   - TOXENV=json-pypy3
   - TOXENV=json-pypy4
-  - TOXENV=ujson-pypy3
-  - TOXENV=ujson-pypy4
+  - TOXENV=pycares-py27
+  - TOXENV=pycares-py35
+  - TOXENV=pycares-pypy3
+  - TOXENV=pycares-pypy4
+  - TOXENV=tornado43-py27
+  - TOXENV=tornado43-py34
+  - TOXENV=tornado43-py35
   - TOXENV=tornado43-pypy3
   - TOXENV=tornado43-pypy4
+  - TOXENV=tornado44-py27
+  - TOXENV=tornado44-py34
+  - TOXENV=tornado44-py35
   - TOXENV=tornado44-pypy3
   - TOXENV=tornado44-pypy4
+  - TOXENV=ujson-py27
+  - TOXENV=ujson-py34
+  - TOXENV=ujson-py35
+  - TOXENV=ujson-pypy3
+  - TOXENV=ujson-pypy4
 
 install:
   - pip install tox 
