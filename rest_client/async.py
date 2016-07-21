@@ -99,6 +99,8 @@ class RESTClient(object):
 
         headers = default_headers
 
+        body = body or ''
+
         if body is not None and "Content-Type" not in headers:
             headers['Content-Type'] = 'application/json'
 
