@@ -102,8 +102,8 @@ class RESTClient(object):
         if body is not None and "Content-Type" not in headers:
             headers['Content-Type'] = 'application/json'
 
-        if method in self.METHODS_WITH_BODY and headers['Content-Type'] == 'application/json':
-            body = yield self._make_json(body)
+        if method in self.METHODS_WITH_BODY and headers.get('Content-Type', '') == 'application/json':
+            body = self._make_json(body)
 
         params = copy(self._default_args)
         params.update(kwargs)
