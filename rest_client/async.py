@@ -2,7 +2,7 @@
 # encoding: utf-8
 from copy import copy
 from tornado.web import Cookie
-from tornado.gen import coroutine, Return, maybe_future
+from tornado.gen import coroutine, Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
@@ -99,11 +99,11 @@ class RESTClient(object):
 
         headers = default_headers
 
-        if "Content-Type" not in headers:
+        if body is not None and "Content-Type" not in headers:
             headers['Content-Type'] = 'application/json'
 
         if method in self.METHODS_WITH_BODY and headers['Content-Type'] == 'application/json':
-            body = yield maybe_future(self._make_json(body))
+            body = yield self._make_json(body)
 
         params = copy(self._default_args)
         params.update(kwargs)
