@@ -75,8 +75,13 @@ class TestCookies(AsyncRESTTestCase):
         self.assertDictEqual(e.exception.response.body, {'fail': True})
 
     @gen_test(timeout=10)
-    def test_timed_out(self):
+    def test_timed_out_fail_true(self):
         with self.assertRaises(HTTPError) as e:
-            yield self.http_client.get(self.api_url.format("/wait"), request_timeout=1)
+            yield self.http_client.get(self.api_url.format("/wait"), request_timeout=1, fail=True)
 
         self.assertEqual(e.exception.response, None)
+
+    @gen_test(timeout=10)
+    def test_timed_out_fail_false(self):
+        response = yield self.http_client.get(self.api_url.format("/wait"), request_timeout=1, fail=False)
+        self.assertEqual(response.fail, True)

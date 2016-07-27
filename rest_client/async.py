@@ -3,7 +3,7 @@
 from copy import copy
 from tornado.web import Cookie
 from tornado.gen import coroutine, Return
-from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError
+from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError, HTTPResponse
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
 from tornado.netutil import Resolver
@@ -144,7 +144,14 @@ class RESTClient(object):
                 response = e.response
 
                 if e.code == 599:
-                    response = e
+                    response = HTTPResponse(
+                        request=request,
+                        code=e.code,
+                        headers=HTTPHeaders(),
+                        effective_url=request.url
+                    )
+
+                    response.fail = True
 
                 if e.code in (301, 302, 303, 307) and follow_redirects:
                     need_redirect = True
