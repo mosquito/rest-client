@@ -109,7 +109,7 @@ class RESTClient(object):
         if body is not None and "Content-Type" not in headers:
             headers['Content-Type'] = 'application/json'
 
-        if method in self.METHODS_WITH_BODY:
+        if method in self.METHODS_WITH_BODY and "body_producer" not in kwargs:
             body = body or ''
 
             if headers.get('Content-Type', '') == 'application/json':
