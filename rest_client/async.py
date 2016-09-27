@@ -6,12 +6,14 @@ from tornado.gen import coroutine, Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError, HTTPResponse
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
-from tornado.netutil import Resolver
 from . import PY2
 
 try:
     import pycares
-    Resolver.configure('tornado.platform.caresresolver.CaresResolver')
+    from tornado.netutil import Resolver
+    from tornado.platform.caresresolver import CaresResolver
+
+    Resolver.configure(CaresResolver)
 except ImportError:
     pass
 
@@ -45,7 +47,6 @@ def make_method(method_name):
         return self.fetch(url, method=method_name, **kwargs)
 
     method.__name__ = method_name.lower()
-
     return method
 
 
@@ -61,7 +62,7 @@ class FrozenDict(dict):
         raise TypeError("Response is immutable")
 
     def __setattr__(self, key, value):
-        if key.startswith("_{0.__class__.__name__}".format(self)):
+        if key.startswith('_{0.__class__.__name__}'.format(self)):
             return super(FrozenDict, self).__setattr__(key, value)
         raise TypeError("Response is immutable")
 
@@ -78,7 +79,7 @@ class FrozenDict(dict):
 class RESTClient(object):
     _DEFAULT = {}
 
-    METHODS_WITH_BODY = set(['POST', 'PUT', 'PATCH'])
+    METHODS_WITH_BODY = {'POST', 'PUT', 'PATCH'}
 
     __slots__ = ('_client', '_cookies', 'io_loop', '_headers', '_default_args')
 
@@ -106,10 +107,10 @@ class RESTClient(object):
 
         headers = default_headers
 
-        if body is not None and "Content-Type" not in headers:
+        if body is not None and 'Content-Type' not in headers:
             headers['Content-Type'] = 'application/json'
 
-        if method in self.METHODS_WITH_BODY:
+        if method in self.METHODS_WITH_BODY and 'body_producer' not in kwargs:
             body = body or ''
 
             if headers.get('Content-Type', '') == 'application/json':
@@ -130,8 +131,8 @@ class RESTClient(object):
                 **params
             )
 
-            request.headers['Cookie'] = "; ".join(
-                "{0.key}={0.value}".format(cookie) for cookie in self._cookies.values()
+            request.headers['Cookie'] = '; '.join(
+                '{0.key}={0.value}'.format(cookie) for cookie in self._cookies.values()
             )
 
             need_redirect = False
@@ -177,10 +178,10 @@ class RESTClient(object):
         if fail and response.fail:
             raise last_exc
 
-        content_type = response.headers.get("Content-Type", '')
+        content_type = response.headers.get('Content-Type', '')
         response._body = self._decode_body(content_type, response.body)
 
-        if response.body and 'json' in response.headers.get("Content-Type", ""):
+        if response.body and 'json' in response.headers.get('Content-Type', ''):
             new_body = self._parse_json(response.body)
             response._body = _freeze_response(new_body)
 
@@ -193,7 +194,7 @@ class RESTClient(object):
     @classmethod
     def _decode_body(cls, content_type, body):
         if 'charset=' in content_type:
-            _, charset = content_type.split("charset=")
+            _, charset = content_type.split('charset=')
             charset = charset.lower()
         else:
             charset = 'utf-8'
