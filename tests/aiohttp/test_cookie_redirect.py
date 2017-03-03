@@ -3,8 +3,7 @@
 from tornado.httpclient import HTTPError as ClientHTTPError
 from tornado.testing import gen_test
 from tornado.web import Application, HTTPError
-from . import RESTTestHandler
-from .server import AsyncRESTTestCase
+from . import RESTTestHandler, AsyncRESTTestCase
 
 
 class CookieRedirectHandler(RESTTestHandler):

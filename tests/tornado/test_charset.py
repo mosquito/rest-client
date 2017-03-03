@@ -3,7 +3,7 @@
 from rest_client import PY2
 from tornado.testing import gen_test
 from tornado.web import Application, RequestHandler
-from .server import AsyncRESTTestCase
+from . import AsyncRESTTestCase
 
 
 class Handler(RequestHandler):
@@ -13,8 +13,8 @@ class Handler(RequestHandler):
         S = 'Привет мир'
 
     def get(self):
-        self.set_header('Content-Type', 'text/plain; charset=cp1251')
-        self.write(self.S.encode('cp1251'))
+        self.set_header('Content-Type', 'text/plain; charset=utf-8')
+        self.write(self.S.encode('utf-8'))
 
 
 class TestCopy(AsyncRESTTestCase):
@@ -25,5 +25,5 @@ class TestCopy(AsyncRESTTestCase):
 
     @gen_test
     def test_get(self):
-        response = yield self.http_client.get(self.api_url.format("/"))
+        response = yield from self.http_client.get(self.api_url.format("/"))
         assert response.body == Handler.S

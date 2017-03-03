@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from copy import copy
+
 from tornado.web import Cookie
 from tornado.gen import coroutine, Return
 from tornado.httpclient import AsyncHTTPClient, HTTPRequest, HTTPError, HTTPResponse
 from tornado.httputil import HTTPHeaders
 from tornado.ioloop import IOLoop
-from . import PY2
+from .common import RESTClientBase, _freeze_response
+from .compat import b
+
 
 try:
     import pycares
@@ -18,94 +21,31 @@ except ImportError:
     pass
 
 
-if PY2:
-    b = unicode
-    iteritems = lambda x: x.iteritems()
-else:
-    b = str
-    iteritems = lambda x: x.items()
+class RESTClient(RESTClientBase):
+    __slots__ = ('_cookies', 'io_loop')
 
+    def _get_client(self, client=None, loop=None):
+        return client if client else AsyncHTTPClient(io_loop=loop)
 
-try:
-    import ujson as json
-except ImportError:
-    import json
+    def _get_loop(self, loop=None):
+        return loop if loop else IOLoop.current()
 
-
-def _freeze_response(response):
-    if isinstance(response, list):
-        return tuple(_freeze_response(x) for x in response)
-    elif isinstance(response, dict):
-        data = dict((k, _freeze_response(v)) for k, v in iteritems(response))
-        return FrozenDict(data)
-    else:
-        return response
-
-
-def make_method(method_name):
-    def method(self, url, **kwargs):
-        return self.fetch(url, method=method_name, **kwargs)
-
-    method.__name__ = method_name.lower()
-    return method
-
-
-class FrozenDict(dict):
-    __slots__ = ('__hash',)
-    __getattr__ = dict.__getitem__
-
-    def __init__(self, data):
-        super(FrozenDict, self).__init__(data)
-        self.__hash = hash(tuple(i for i in sorted(iteritems(self))))
-
-    def __setitem__(self, key, value):
-        raise TypeError("Response is immutable")
-
-    def __setattr__(self, key, value):
-        if key.startswith('_{0.__class__.__name__}'.format(self)):
-            return super(FrozenDict, self).__setattr__(key, value)
-        raise TypeError("Response is immutable")
-
-    def __hash__(self):
-        return self.__hash
-
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-
-    def __ne__(self, other):
-        return hash(self) != hash(other)
-
-
-class RESTClient(object):
-    _DEFAULT = {}
-
-    METHODS_WITH_BODY = {'POST', 'PUT', 'PATCH'}
-
-    __slots__ = ('_client', '_cookies', 'io_loop', '_headers', '_default_args')
-
-    @classmethod
-    def configure(cls, **kwargs):
-        cls._DEFAULT.update(kwargs)
+    def prepare(self):
+        self.io_loop = self.loop
+        self._cookies = Cookie.SimpleCookie()
 
     def __init__(self, io_loop=None, client=None, headers=None, **kwargs):
-        self.io_loop = IOLoop.current() if io_loop is None else io_loop
+        RESTClientBase.__init__(self, loop=io_loop, client=client, headers=headers, **kwargs)
 
-        self._headers = headers if headers else {}
-
-        self._client = AsyncHTTPClient() if client is None else client
-        self._cookies = Cookie.SimpleCookie()
-        self._default_args = copy(self._DEFAULT)
-        self._default_args.update(kwargs)
+    @property
+    def close(self):
+        return self._client.close
 
     @coroutine
-    def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False, follow_redirects=True, max_redirects=5, **kwargs):
-        if not headers:
-            headers = {}
+    def fetch(self, url, method='GET', body=None, headers=None, fail=True, freeze=False,
+              follow_redirects=True, max_redirects=5, **kwargs):
 
-        default_headers = copy(self._headers)
-        default_headers.update(headers)
-
-        headers = default_headers
+        headers = self.get_headers(headers)
 
         if body is not None and 'Content-Type' not in headers:
             headers['Content-Type'] = 'application/json'
@@ -191,35 +131,9 @@ class RESTClient(object):
 
         raise Return(response)
 
-    @classmethod
-    def _decode_body(cls, content_type, body):
-        if 'charset=' in content_type:
-            _, charset = content_type.split('charset=')
-            charset = charset.lower()
-        else:
-            charset = 'utf-8'
-
-        try:
-            return body.decode(charset)
-        except:
-            return body
-
-    def _parse_json(self, data):
-        return json.loads(data)
-
-    def _make_json(self, data):
-        return json.dumps(data)
-
     @property
     def close(self):
         return self._client.close
-
-    get = make_method('GET')
-    post = make_method('POST')
-    put = make_method('PUT')
-    options = make_method('OPTIONS')
-    delete = make_method('DELETE')
-    head = make_method('HEAD')
 
     def __copy__(self):
         client = RESTClient(

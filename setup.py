@@ -5,9 +5,7 @@ import rest_client
 import sys
 
 
-requires = [
-    'tornado',
-]
+requires = []
 
 
 if sys.version_info < (3,):
@@ -36,6 +34,11 @@ setup(
     long_description=open('README.rst').read(),
     packages=find_packages(exclude=['tests']),
     install_requires=requires,
+    extras_require={
+        'tornado': ['tornado'],
+        'aiohttp': ['aiohttp<1.0'],
+        'asyncio': ['aiohttp<1.0'],
+    }
 )
 
 

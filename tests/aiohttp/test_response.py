@@ -5,8 +5,7 @@ from random import randint
 from tornado.httpclient import HTTPError
 from tornado.testing import gen_test
 from tornado.web import Application, asynchronous
-from . import RESTTestHandler
-from .server import AsyncRESTTestCase
+from . import RESTTestHandler, AsyncRESTTestCase
 
 
 class Handler(RESTTestHandler):

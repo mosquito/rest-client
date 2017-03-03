@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
-from copy import copy
 from tornado.testing import gen_test
 from tornado.web import Application
-from . import RESTTestHandler
-from .server import AsyncRESTTestCase
+from . import RESTTestHandler, AsyncRESTTestCase
 
 
 class Handler(RESTTestHandler):
