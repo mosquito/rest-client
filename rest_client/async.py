@@ -196,6 +196,8 @@ class RESTClient(object):
         if 'charset=' in content_type:
             _, charset = content_type.split('charset=')
             charset = charset.lower()
+        elif 'octet-stream' in content_type:
+            return body
         else:
             charset = 'utf-8'
 
